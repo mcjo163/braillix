@@ -1,0 +1,13 @@
+[package]
+name = "braillix"
+description = "A dot-matrix display implemented with braille characters"
+keywords = ["graphics", "rastering", "unicode"]
+
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+categories.workspace = true
+repository.workspace = true
+
+[dependencies]

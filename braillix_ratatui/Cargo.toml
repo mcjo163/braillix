@@ -1,0 +1,18 @@
+[package]
+name = "braillix_ratatui"
+description = "Adapter to use braillix as a ratatui widget"
+keywords = ["graphics", "rastering", "tui"]
+
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+categories.workspace = true
+repository.workspace = true
+
+[dependencies]
+braillix = { path = "../braillix", version = "0.1.0" }
+ratatui = "0.29.0"
+
+[dev-dependencies]
+crossterm = "0.28.1"

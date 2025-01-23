@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "braillix",
+    "braillix_ratatui",
+]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Micah Johnson <micahjohnson721@gmail.com>"]
+edition = "2021"
+license = "MIT"
+repository = "https://www.github.com/mcjo163/braillix"
+categories = ["graphics", "rendering", "visualization"]
