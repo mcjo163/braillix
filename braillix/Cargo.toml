@@ -2,6 +2,7 @@
 name = "braillix"
 description = "A dot-matrix display implemented with braille characters"
 keywords = ["graphics", "rastering", "unicode"]
+readme = "README.md"
 
 version.workspace = true
 authors.workspace = true

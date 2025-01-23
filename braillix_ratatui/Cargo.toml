@@ -1,7 +1,8 @@
 [package]
 name = "braillix_ratatui"
 description = "Adapter to use braillix as a ratatui widget"
-keywords = ["graphics", "rastering", "tui"]
+keywords = ["graphics", "rastering", "unicode", "tui"]
+readme = "README.md"
 
 version.workspace = true
 authors.workspace = true
