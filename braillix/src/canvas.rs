@@ -126,10 +126,6 @@ impl Canvas {
         self.draw_line(p1, p2);
         self.draw_line(p2, p0);
     }
-
-    pub fn draw_circle(&mut self, c: Point, r: usize) {
-        todo!()
-    }
 }
 
 // Private implemetation helpers.
