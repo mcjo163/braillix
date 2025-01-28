@@ -4,7 +4,11 @@ A Rust library providing a simulated dot-matrix display created with
 braille unicode characters (`U+2800-28FF`), and an adapter crate for
 using it with [`ratatui`](https://ratatui.rs).
 
-![rotating triangle](assets/tri.gif) ![oscillating shaded circle](assets/circle.gif)
+<p align="center">
+  <img alt="rotating triangle" src="./assets/tri.gif" width="45%">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img alt="oscillating shaded circle" src="./assets/circle.gif" width="45%">
+</p>
 
 See the individual crates for more information:
  - [`braillix`](/braillix)
