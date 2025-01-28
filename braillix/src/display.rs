@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+use std::fmt;
 
 /// A low-level buffer for braille drawing.
 #[derive(Debug, PartialEq, Eq)]
@@ -6,7 +6,6 @@ pub struct Display {
     width: usize,
     height: usize,
     cells: Vec<u8>,
-    // TODO: fg/bg coloring
 }
 
 impl Display {
@@ -28,8 +27,7 @@ impl Display {
 
     /// Creates a new `Display` with the given output (character) dimensions.
     pub fn with_output_size(width: usize, height: usize) -> Self {
-        let mut cells = Vec::new();
-        cells.resize(width * height, 0);
+        let cells = vec![0; width * height];
         Self {
             width,
             height,
@@ -62,17 +60,11 @@ impl Display {
     }
 
     /// Get an iterator over the lines of the display as `String`s.
-    // TODO: there has got to be a way to simplify this return type...
-    pub fn lines(&self) -> DisplayLines<impl Iterator<Item = String> + use<'_>> {
-        let inner = (0..self.height).map(|y| {
-            let start = self.coord_to_index(0, y);
-            let end = start + self.width;
-            self.cells[start..end]
-                .iter()
-                .map(|&i| braille_util::get_char(i))
-                .collect::<String>()
-        });
-        DisplayLines { inner }
+    pub fn lines(&self) -> DisplayLines<'_> {
+        DisplayLines {
+            display: self,
+            index: 0,
+        }
     }
 
     pub fn is_set(&self, x: usize, y: usize) -> bool {
@@ -110,21 +102,46 @@ impl Display {
 }
 
 /// Iterator over the lines of braille text in the display.
-pub struct DisplayLines<I>
-where
-    I: Iterator<Item = String>,
-{
-    inner: I,
+pub struct DisplayLines<'a> {
+    display: &'a Display,
+    index: usize,
 }
 
-impl<I> Iterator for DisplayLines<I>
-where
-    I: Iterator<Item = String>,
-{
-    type Item = I::Item;
+impl Iterator for DisplayLines<'_> {
+    type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
+        if self.index >= self.display.height {
+            return None;
+        }
+
+        let start = self.display.coord_to_index(0, self.index);
+        let end = start + self.display.width;
+        let line = self.display.cells[start..end]
+            .iter()
+            .map(|&i| braille_util::get_char(i))
+            .collect();
+
+        self.index += 1;
+        Some(line)
+    }
+}
+
+impl From<&Display> for String {
+    fn from(value: &Display) -> Self {
+        value.lines().collect::<Vec<_>>().join("\n")
+    }
+}
+
+impl From<Display> for String {
+    fn from(value: Display) -> Self {
+        String::from(&value)
+    }
+}
+
+impl fmt::Display for Display {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", String::from(self))
     }
 }
 

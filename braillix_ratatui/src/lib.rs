@@ -1,6 +1,9 @@
 use braillix::{canvas::Canvas, display::Display};
 use ratatui::{buffer::Buffer, layout::Rect, text::Line, widgets::Widget};
 
+pub mod animation;
+
+/// An adapter trait providing a `widget` method for `braillix` objects.
 pub trait ToWidget {
     type Output<'a>: Widget
     where
@@ -11,14 +14,14 @@ pub trait ToWidget {
     /// # Example
     ///
     /// ```edition2021
-    /// use braillix::canvas::{Canvas, ShapeStyle};
+    /// use braillix::canvas::{Canvas, Style};
     /// use braillix_ratatui::ToWidget;
     /// use ratatui::prelude::*;
     ///
     /// let mut canvas = Canvas::with_dot_size(4, 4);
     /// let mut buf = Buffer::empty(Rect::new(0, 0, 2, 1));
     ///
-    /// canvas.draw_rect((0, 0), 4, 4, ShapeStyle::Outlined);
+    /// canvas.draw_rect((0, 0), 4, 4, Style::outlined());
     /// canvas.widget().render(buf.area, &mut buf);
     ///
     /// let expected = Buffer::with_lines(vec!["⣏⣹"]);
@@ -35,17 +38,10 @@ impl Widget for DisplayWidget<'_> {
         let d_height = self.0.output_height() as u16;
 
         let render_area = area.intersection(Rect::new(area.left(), area.top(), d_width, d_height));
-        let (rw, rh) = (render_area.width as usize, render_area.height as usize);
-        for (y, s) in self.0.lines().take(rh).enumerate() {
-            Line::from(s.chars().take(rw).collect::<String>()).render(
-                Rect::new(
-                    render_area.left(),
-                    render_area.top() + y as u16,
-                    render_area.width,
-                    1,
-                ),
-                buf,
-            );
+        let rw = render_area.width as usize;
+
+        for (line, row) in self.0.lines().zip(render_area.rows()) {
+            Line::from(line.chars().take(rw).collect::<String>()).render(row, buf);
         }
     }
 }
@@ -75,13 +71,13 @@ impl ToWidget for Canvas {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use braillix::canvas::ShapeStyle;
+    use braillix::canvas::Style;
 
     #[test]
     fn render() {
         // standard usage
         let mut canvas = Canvas::with_dot_size(4, 4);
-        canvas.draw_rect((0, 0), 4, 4, ShapeStyle::Outlined);
+        canvas.draw_rect((0, 0), 4, 4, Style::outlined());
 
         let mut buf = Buffer::empty(Rect::new(0, 0, 2, 1));
         canvas.widget().render(buf.area, &mut buf);
