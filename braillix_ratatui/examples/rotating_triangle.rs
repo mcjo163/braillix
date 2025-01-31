@@ -5,14 +5,14 @@ use std::{
 };
 
 use braillix::canvas::{Canvas, Style};
-use braillix_ratatui::animation::{AnimState, Animation};
+use braillix_ratatui::animation::{Animation, AnimationState};
 
 #[derive(Default)]
 struct State {
     theta: f64,
 }
 
-impl AnimState for State {
+impl AnimationState for State {
     fn update(&mut self, delta: Duration) {
         let rotation_amount = 1.4 * delta.as_secs_f64();
         self.theta = (self.theta + rotation_amount) % (2.0 * PI);
@@ -28,12 +28,9 @@ impl AnimState for State {
             (5.0 * FRAC_PI_6).sin_cos(),
         ];
 
-        let center = {
-            let (w, h) = canvas.display.dot_size();
-            (w / 2, h / 2)
-        };
-
-        let tri_size = (canvas.display.dot_width()).min(canvas.display.dot_height()) as f64 * 0.4;
+        let (dw, dh) = canvas.dot_size();
+        let center = ((dw / 2) as f64, (dh / 2) as f64);
+        let tri_size = dw.min(dh) as f64 * 0.4;
 
         let (sin_theta, cos_theta) = self.theta.sin_cos();
         let transformed_points: Vec<_> = verts_around_origin
@@ -41,18 +38,8 @@ impl AnimState for State {
             .map(|(y, x)| {
                 let tx = tri_size * (x * cos_theta - y * sin_theta);
                 let ty = tri_size * (y * cos_theta + x * sin_theta);
-                (
-                    if tx > 0.0 {
-                        center.0 + tx.round() as usize
-                    } else {
-                        center.0 - (-tx).round() as usize
-                    },
-                    if ty > 0.0 {
-                        center.1 + ty as usize
-                    } else {
-                        center.1 - (-ty) as usize
-                    },
-                )
+
+                (center.0 + tx, center.1 + ty)
             })
             .collect();
 

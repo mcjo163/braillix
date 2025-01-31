@@ -8,8 +8,7 @@ fn main() {
     for b in 0..=64 {
         c.draw_rect(
             (b * segment_width, 0),
-            segment_width,
-            segment_height,
+            (segment_width, segment_height),
             Style::filled_with_brightness(b),
         );
     }

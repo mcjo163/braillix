@@ -1,25 +1,29 @@
+//! # canvas
+//!
+//! This module provides `Canvas` and related types. It uses a `Display`
+//! internally and provides an abstraction for drawing shapes and lines.
+
 use std::fmt;
 
 use crate::display::Display;
+
+mod coords;
+use coords::{ToCoords, ToDisplay};
 
 mod dither;
 
 mod style;
 pub use style::Style;
 
-// TODO: replace this with nalgebra or at least offer signed
-// and float alternatives.
-type Point = (usize, usize);
-
 /// A canvas that offers a higher-level API on top of `Display`
 /// with drawing primitives.
 pub struct Canvas {
-    pub display: Display,
+    display: Display,
 }
 
 // Public API
 impl Canvas {
-    /// Create a new `Canvas` with the given dot size.
+    /// Creates a new `Canvas` with the given dot size.
     ///
     /// For now, the width must be a multiple of 2 and the height
     /// must be a multiple of 4 so that it maps nicely to braille
@@ -39,30 +43,70 @@ impl Canvas {
         Self { display }
     }
 
-    // TODO: re-export some other display methods that might be useful, like size getters
+    /// Returns a reference to the underlying `Display`.
+    pub fn display(&self) -> &Display {
+        &self.display
+    }
+
+    /// Returns a mutable reference to the underlying `Display`.
+    pub fn display_mut(&mut self) -> &mut Display {
+        &mut self.display
+    }
+
+    /// Clears the canvas.
     pub fn clear(&mut self) {
         self.display.clear();
     }
 
-    pub fn draw_line(&mut self, p0: Point, p1: Point, style: Style) {
+    /// Gets the width of the canvas in dots.
+    pub fn dot_width(&self) -> usize {
+        self.display.dot_width()
+    }
+
+    /// Gets the height of the canvas in dots.
+    pub fn dot_height(&self) -> usize {
+        self.display.dot_height()
+    }
+
+    /// Gets the size (width, height) of the canvas in dots.
+    pub fn dot_size(&self) -> (usize, usize) {
+        self.display.dot_size()
+    }
+
+    /// Gets the width of the canvas in characters.
+    pub fn output_width(&self) -> usize {
+        self.display.output_width()
+    }
+
+    /// Gets the height of the canvas in characters.
+    pub fn output_height(&self) -> usize {
+        self.display.output_height()
+    }
+
+    /// Gets the size (width, height) of the canvas in characters.
+    pub fn output_size(&self) -> (usize, usize) {
+        self.display.output_size()
+    }
+
+    pub fn draw_line(&mut self, p0: impl ToCoords, p1: impl ToCoords, style: Style) {
         let brightness = match style.outline {
             Some(b) => b,
             None => return,
         };
 
-        let (x0, y0) = p0;
-        let (x1, y1) = p1;
+        let (x0, y0) = p0.to_coords_i32();
+        let (x1, y1) = p1.to_coords_i32();
 
         match (x0 == x1, y0 == y1) {
-            (true, true) => self.set_dithered(x0, y0, brightness),
-            (false, true) => self.draw_hor_line(y0, x0, x1, brightness),
-            (true, false) => self.draw_ver_line(x0, y0, y1, brightness),
+            (true, true) => self.set_with_brightness((x0, y0), brightness),
+            (false, true) => self.draw_hor_line(p0, p1, brightness),
+            (true, false) => self.draw_ver_line(p0, p1, brightness),
             (false, false) => {
                 // Generalized Bresenham algorithm sourced from:
                 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm#All_cases
 
-                let (mut x0, x1) = (x0 as isize, x1 as isize);
-                let (mut y0, y1) = (y0 as isize, y1 as isize);
+                let mut x0 = x0;
+                let mut y0 = y0;
 
                 let dx = (x1 - x0).abs();
                 let sx = (x1 - x0).signum();
@@ -71,7 +115,7 @@ impl Canvas {
                 let mut error = dx + dy;
 
                 loop {
-                    self.set_dithered(x0 as usize, y0 as usize, brightness);
+                    self.set_with_brightness((x0, y0), brightness);
                     let e2 = 2 * error;
 
                     if e2 >= dy {
@@ -94,19 +138,32 @@ impl Canvas {
         }
     }
 
-    pub fn draw_rect(&mut self, p: Point, w: usize, h: usize, style: Style) {
+    pub fn draw_rect(&mut self, p: impl ToCoords, dim: impl ToCoords, style: Style) {
+        let p0 = p.to_coords_i32();
+        let (w, h) = dim.to_coords_i32();
+        let p1 = (p0.0 + w, p0.1 + h);
+
+        let (min_x, max_x) = min_and_max(p0.0, p1.0);
+        let (min_y, max_y) = min_and_max(p0.1, p1.1);
+
+        // p0: top-left, p1: bottom-right
+        let p0 = (min_x, min_y);
+        let p1 = (max_x, max_y);
+
         if let Some(brightness) = style.fill {
-            for y in (p.1)..(p.1 + h) {
+            for y in p0.1..p1.1 {
                 self.draw_line(
-                    (p.0, y),
-                    (p.0 + w - 1, y),
+                    (p0.0, y),
+                    (p1.0 - 1, y),
                     Style::outlined_with_brightness(brightness),
                 );
             }
         }
 
         if let Some(brightness) = style.distinguishable_outline() {
-            // draw top and bottom edges
+            let w = p1.0 - p0.0;
+            let h = p1.1 - p0.1;
+
             if w == 0 || h == 0 {
                 return;
             }
@@ -117,45 +174,44 @@ impl Canvas {
             }
 
             if w == 1 || h == 1 {
-                self.draw_line(
-                    p,
-                    if w == 1 {
-                        (p.0, p.1 + h - 1)
-                    } else {
-                        (p.0 + w - 1, p.1)
-                    },
-                    Style::outlined_with_brightness(brightness),
-                );
+                self.draw_line(p0, p1, Style::outlined_with_brightness(brightness));
             }
 
+            // draw top and bottom edges
             self.draw_line(
-                p,
-                (p.0 + w - 1, p.1),
+                p0,
+                (p1.0 - 1, p0.1),
                 Style::outlined_with_brightness(brightness),
             );
             self.draw_line(
-                (p.0, p.1 + h - 1),
-                (p.0 + w - 1, p.1 + h - 1),
+                (p0.0, p1.1 - 1),
+                (p1.0 - 1, p1.1 - 1),
                 Style::outlined_with_brightness(brightness),
             );
 
             if h > 2 {
                 // draw left and right edges
                 self.draw_line(
-                    (p.0, p.1 + 1),
-                    (p.0, p.1 + h - 2),
+                    (p0.0, p0.1 + 1),
+                    (p0.0, p1.1 - 2),
                     Style::outlined_with_brightness(brightness),
                 );
                 self.draw_line(
-                    (p.0 + h - 1, p.1 + 1),
-                    (p.0 + h - 1, p.1 + h - 2),
+                    (p1.0 - 1, p0.1 + 1),
+                    (p1.0 - 1, p1.1 - 2),
                     Style::outlined_with_brightness(brightness),
                 );
             }
         }
     }
 
-    pub fn draw_tri(&mut self, p0: Point, p1: Point, p2: Point, style: Style) {
+    pub fn draw_tri(
+        &mut self,
+        p0: impl ToCoords,
+        p1: impl ToCoords,
+        p2: impl ToCoords,
+        style: Style,
+    ) {
         // TODO: filled triangles
         if let Some(brightness) = style.outline {
             self.draw_line(p0, p1, Style::outlined_with_brightness(brightness));
@@ -164,40 +220,31 @@ impl Canvas {
         }
     }
 
-    pub fn draw_circle(&mut self, p: Point, r: usize, style: Style) {
+    pub fn draw_circle(&mut self, p: impl ToCoords, r: usize, style: Style) {
         // Implementation from
         // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm#Jesko%27s_Method
-        let (cx, cy) = (p.0 as isize, p.1 as isize);
-        let mut t1 = (r / 16) as isize;
-        let mut x = r as isize;
+
+        let (cx, cy) = p.to_coords_i32();
+        let mut x = r as i32;
         let mut y = 0;
+        let mut t1 = x / 16;
 
         while x >= y {
-            for m0 in [-1, 1] {
-                for m1 in [-1, 1] {
-                    let x_o1 = (cx + m0 * x) as usize;
-                    let y_o1 = (cy + m1 * y) as usize;
-                    let x_o2 = (cx + m0 * y) as usize;
-                    let y_o2 = (cy + m1 * x) as usize;
+            for qx in [-1, 1] {
+                for qy in [-1, 1] {
+                    let o1 = (cx + qx * x, cy + qy * y);
+                    let o2 = (cx + qx * y, cy + qy * x);
 
                     if let Some(brightness) = style.fill {
                         // Draw a line from the diagonal to the point on each octant.
-                        let p = ((cx + m0 * y) as usize, (cy + m1 * y) as usize);
-                        self.draw_line(
-                            p,
-                            (x_o1, y_o1),
-                            Style::outlined_with_brightness(brightness),
-                        );
-                        self.draw_line(
-                            p,
-                            (x_o2, y_o2),
-                            Style::outlined_with_brightness(brightness),
-                        );
+                        let d = (o2.0, o1.1);
+                        self.draw_line(d, o1, Style::outlined_with_brightness(brightness));
+                        self.draw_line(d, o2, Style::outlined_with_brightness(brightness));
                     }
 
                     if let Some(brightness) = style.distinguishable_outline() {
-                        self.set_dithered(x_o1, y_o1, brightness);
-                        self.set_dithered(x_o2, y_o2, brightness);
+                        self.set_with_brightness(o1, brightness);
+                        self.set_with_brightness(o2, brightness);
                     }
                 }
             }
@@ -215,13 +262,8 @@ impl Canvas {
 
 // Private implemetation helpers.
 impl Canvas {
-    fn is_in_bounds(&self, x: usize, y: usize) -> bool {
-        let (w, h) = self.display.dot_size();
-        x < w && y < h
-    }
-
-    fn set_dithered(&mut self, x: usize, y: usize, brightness: usize) {
-        if self.is_in_bounds(x, y) {
+    fn set_with_brightness(&mut self, p: impl ToDisplay, brightness: usize) {
+        if let Some((x, y)) = p.to_display(self.dot_size()) {
             const MAX_B: usize = dither::max_brightness();
             match brightness {
                 // Anything with 0 brightness will end up unset, and
@@ -240,17 +282,25 @@ impl Canvas {
         }
     }
 
-    fn draw_ver_line(&mut self, x: usize, y0: usize, y1: usize, brightness: usize) {
+    /// If `p1` has a different x-coordinate from `p0`, it is ignored.
+    fn draw_ver_line(&mut self, p0: impl ToCoords, p1: impl ToCoords, brightness: usize) {
+        let (x, y0) = p0.to_coords_i32();
+        let (_, y1) = p1.to_coords_i32();
+
         let (y0, y1) = min_and_max(y0, y1);
         for y in y0..=y1 {
-            self.set_dithered(x, y, brightness);
+            self.set_with_brightness((x, y), brightness);
         }
     }
 
-    fn draw_hor_line(&mut self, y: usize, x0: usize, x1: usize, brightness: usize) {
+    /// If `p1` has a different y-coordinate from `p0`, it is ignored.
+    fn draw_hor_line(&mut self, p0: impl ToCoords, p1: impl ToCoords, brightness: usize) {
+        let (x0, y) = p0.to_coords_i32();
+        let (x1, _) = p1.to_coords_i32();
+
         let (x0, x1) = min_and_max(x0, x1);
         for x in x0..=x1 {
-            self.set_dithered(x, y, brightness);
+            self.set_with_brightness((x, y), brightness);
         }
     }
 }
@@ -273,7 +323,7 @@ impl fmt::Display for Canvas {
     }
 }
 
-fn min_and_max(a: usize, b: usize) -> (usize, usize) {
+fn min_and_max(a: i32, b: i32) -> (i32, i32) {
     if a < b {
         (a, b)
     } else {
