@@ -1,3 +1,11 @@
+//! # display
+//!
+//! This module provides `Display`, a low-level buffer for braille drawing. It is
+//! a stateful object holding an array of indices into a compile-time generated
+//! unicode lookup table.
+//!
+//! For more advanced drawing, see `Canvas`.
+
 use std::fmt;
 
 /// A low-level buffer for braille drawing.
@@ -9,7 +17,7 @@ pub struct Display {
 }
 
 impl Display {
-    /// Create a new `Display` with the given dot size.
+    /// Creates a new `Display` with the given dot size.
     ///
     /// For now, the width must be a multiple of 2 and the height
     /// must be a multiple of 4 so that it maps nicely to braille
@@ -35,31 +43,37 @@ impl Display {
         }
     }
 
+    /// Gets the width of the display in dots.
     pub fn dot_width(&self) -> usize {
         self.width * 2
     }
 
+    /// Gets the height of the display in dots.
     pub fn dot_height(&self) -> usize {
         self.height * 4
     }
 
+    /// Gets the size (width, height) of the display in dots.
     pub fn dot_size(&self) -> (usize, usize) {
         (self.dot_width(), self.dot_height())
     }
 
+    /// Gets the width of the display in characters.
     pub fn output_width(&self) -> usize {
         self.width
     }
 
+    /// Gets the height of the display in characters.
     pub fn output_height(&self) -> usize {
         self.height
     }
 
+    /// Gets the size (width, height) of the display in characters.
     pub fn output_size(&self) -> (usize, usize) {
         (self.width, self.height)
     }
 
-    /// Get an iterator over the lines of the display as `String`s.
+    /// Returns an iterator over the lines of the display as `String`s.
     pub fn lines(&self) -> DisplayLines<'_> {
         DisplayLines {
             display: self,
@@ -67,6 +81,7 @@ impl Display {
         }
     }
 
+    /// Checks if the given dot is set in the display.
     pub fn is_set(&self, x: usize, y: usize) -> bool {
         let ((cell_x, subcell_x), (cell_y, subcell_y)) = Self::parse_coord(x, y);
 
@@ -74,6 +89,7 @@ impl Display {
         braille_util::is_set(self.cells[i], subcell_x, subcell_y)
     }
 
+    /// Sets the given dot in the display.
     pub fn set(&mut self, x: usize, y: usize) {
         let ((cell_x, subcell_x), (cell_y, subcell_y)) = Self::parse_coord(x, y);
 
@@ -81,6 +97,7 @@ impl Display {
         braille_util::set_coord(&mut self.cells[i], subcell_x, subcell_y);
     }
 
+    /// Unsets the given dot in the display.
     pub fn unset(&mut self, x: usize, y: usize) {
         let ((cell_x, subcell_x), (cell_y, subcell_y)) = Self::parse_coord(x, y);
 
@@ -88,14 +105,17 @@ impl Display {
         braille_util::unset_coord(&mut self.cells[i], subcell_x, subcell_y);
     }
 
+    /// Clears the display by unsetting all of its dots.
     pub fn clear(&mut self) {
         self.cells.fill(0);
     }
 
+    /// Splits dot coordinates into the cell coordinates and sub-cell coordinates.
     fn parse_coord(x: usize, y: usize) -> ((usize, usize), (usize, usize)) {
         ((x / 2, x % 2), (y / 4, y % 4))
     }
 
+    /// Turns cell coordinates into their corresponding internal array index.
     fn coord_to_index(&self, x: usize, y: usize) -> usize {
         y * self.width + x
     }
@@ -175,7 +195,7 @@ mod braille_util {
     }
     const LOOKUP_TABLE: [char; 256] = gen_braille_table();
 
-    /// Index the compile-time generated lookup table for braille characters.
+    /// Indexes the compile-time generated lookup table for braille characters.
     ///
     /// 0b7654_3210 maps to:
     ///
@@ -187,18 +207,18 @@ mod braille_util {
         LOOKUP_TABLE[i as usize]
     }
 
-    /// Check if a given dot is set in `i`.
+    /// Checks if a given dot is set in `i`.
     pub fn is_set(i: u8, x: usize, y: usize) -> bool {
         let mask = 1 << (4 * x + y);
         i & mask != 0
     }
 
-    /// Set dots on an index ref according to a mask.
+    /// Sets dots on an index ref according to a mask.
     pub fn set_mask(i: &mut u8, mask: u8) {
         *i |= mask;
     }
 
-    /// Set a braille dot on an index ref.
+    /// Sets a braille dot on an index ref.
     ///
     /// # Bounds:
     /// - 0 <= x < 2
@@ -208,12 +228,12 @@ mod braille_util {
         set_mask(i, mask);
     }
 
-    /// Unset dots on an index ref according to a mask.
+    /// Unsets dots on an index ref according to a mask.
     pub fn unset_mask(i: &mut u8, mask: u8) {
         *i &= mask;
     }
 
-    /// Unset a braille dot on an index ref.
+    /// Unsets a braille dot on an index ref.
     ///
     /// # Bounds:
     /// - 0 <= x < 2

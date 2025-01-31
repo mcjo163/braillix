@@ -21,7 +21,7 @@ pub trait ToWidget {
     /// let mut canvas = Canvas::with_dot_size(4, 4);
     /// let mut buf = Buffer::empty(Rect::new(0, 0, 2, 1));
     ///
-    /// canvas.draw_rect((0, 0), 4, 4, Style::outlined());
+    /// canvas.draw_rect((0, 0), (4, 4), Style::outlined());
     /// canvas.widget().render(buf.area, &mut buf);
     ///
     /// let expected = Buffer::with_lines(vec!["⣏⣹"]);
@@ -57,7 +57,7 @@ impl ToWidget for Display {
 pub struct CanvasWidget<'a>(&'a Canvas);
 impl Widget for CanvasWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        DisplayWidget(&self.0.display).render(area, buf);
+        DisplayWidget(self.0.display()).render(area, buf);
     }
 }
 impl ToWidget for Canvas {
@@ -77,7 +77,7 @@ mod tests {
     fn render() {
         // standard usage
         let mut canvas = Canvas::with_dot_size(4, 4);
-        canvas.draw_rect((0, 0), 4, 4, Style::outlined());
+        canvas.draw_rect((0, 0), (4, 4), Style::outlined());
 
         let mut buf = Buffer::empty(Rect::new(0, 0, 2, 1));
         canvas.widget().render(buf.area, &mut buf);
