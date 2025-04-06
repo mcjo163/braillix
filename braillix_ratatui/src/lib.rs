@@ -21,7 +21,10 @@ pub trait ToWidget {
     /// let mut canvas = Canvas::with_dot_size(4, 4);
     /// let mut buf = Buffer::empty(Rect::new(0, 0, 2, 1));
     ///
-    /// canvas.draw_rect((0, 0), (4, 4), Style::outlined());
+    /// canvas.draw(
+    ///     braillix::canvas::geometry::Rect::new((0, 0), (4, 4)),
+    ///     Style::outlined(),
+    /// );
     /// canvas.widget().render(buf.area, &mut buf);
     ///
     /// let expected = Buffer::with_lines(vec!["⣏⣹"]);
@@ -77,7 +80,10 @@ mod tests {
     fn render() {
         // standard usage
         let mut canvas = Canvas::with_dot_size(4, 4);
-        canvas.draw_rect((0, 0), (4, 4), Style::outlined());
+        canvas.draw(
+            braillix::canvas::geometry::Rect::new((0, 0), (4, 4)),
+            Style::outlined(),
+        );
 
         let mut buf = Buffer::empty(Rect::new(0, 0, 2, 1));
         canvas.widget().render(buf.area, &mut buf);

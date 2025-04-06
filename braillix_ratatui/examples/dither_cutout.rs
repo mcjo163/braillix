@@ -1,6 +1,9 @@
 use std::{io, time::Duration};
 
-use braillix::canvas::{Canvas, Style};
+use braillix::canvas::{
+    geometry::{Circle, Rect},
+    Canvas, Style,
+};
 use braillix_ratatui::animation::{Animation, AnimationState};
 
 #[derive(Default)]
@@ -15,8 +18,11 @@ impl AnimationState for State {
 
     fn paint(&self, canvas: &mut Canvas) {
         let b = ((self.t * 2.0).cos() + 1.0) / 2.0;
-        canvas.draw_rect((10, 10), (80, 80), Style::filled());
-        canvas.draw_circle((50, 50), 30, Style::filled_with_brightness_f64(b));
+        canvas.draw(Rect::new((10, 10), (80, 80)), Style::filled());
+        canvas.draw(
+            Circle::new((50, 50), 30),
+            Style::filled_with_brightness_f64(b),
+        );
     }
 }
 
