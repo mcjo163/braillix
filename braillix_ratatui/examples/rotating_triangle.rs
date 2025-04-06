@@ -4,7 +4,10 @@ use std::{
     time::Duration,
 };
 
-use braillix::canvas::{Canvas, Style};
+use braillix::canvas::{
+    geometry::{Line, Tri},
+    Canvas, Style,
+};
 use braillix_ratatui::animation::{Animation, AnimationState};
 
 #[derive(Default)]
@@ -44,13 +47,15 @@ impl AnimationState for State {
             .collect();
 
         for &p in transformed_points.iter() {
-            canvas.draw_line(center, p, Style::outlined());
+            canvas.draw(Line::new(center, p), Style::outlined());
         }
 
-        canvas.draw_tri(
-            transformed_points[0],
-            transformed_points[1],
-            transformed_points[2],
+        canvas.draw(
+            Tri::new(
+                transformed_points[0],
+                transformed_points[1],
+                transformed_points[2],
+            ),
             Style::outlined(),
         );
     }
