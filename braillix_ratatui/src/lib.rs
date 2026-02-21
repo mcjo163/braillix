@@ -1,5 +1,5 @@
 use braillix::{canvas::Canvas, display::Display};
-use ratatui::{buffer::Buffer, layout::Rect, text::Line, widgets::Widget};
+use ratatui_core::{buffer::Buffer, layout::Rect, text::Line, widgets::Widget};
 
 pub mod animation;
 
