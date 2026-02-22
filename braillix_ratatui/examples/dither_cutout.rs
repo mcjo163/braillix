@@ -27,8 +27,5 @@ impl AnimationState for State {
 }
 
 fn main() -> io::Result<()> {
-    let mut term = ratatui::init();
-    let res = Animation::new(&mut term, State::default())?.run(60.0);
-    ratatui::restore();
-    res
+    ratatui::run(|term| Animation::new(term, State::default())?.run(60.0))
 }
